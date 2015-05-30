@@ -1,23 +1,76 @@
+// This #include statement was automatically added by the Spark IDE.
+#include "TimeAlarms/TimeAlarms.h"
+
 // ************************* DEFINITIONS *************************
 #define ONE_DAY_MILLIS (24 * 60 * 60 * 1000)
+#define ZONE0 0
+#define ZONE1 1
+#define ZONE2 2
+#define ZONE3 3
+#define TIMER 20	// seconds for "relay test heartbeat timer"
 
 // ************************* VARIABLES *************************
 unsigned long last_cloud_time_sync = millis();
+byte zone_state_array[4] = {0,0,0,0};
+byte zones[4] = {ZONE0, ZONE1, ZONE2, ZONE3};
 
+int API_test(String command);
 
 // ************************* SETUP *************************
 void setup() {
 	// set time zone to MST (daylight -6, std -7) on each boot
 	set_time_zone(-6);
-	publish_event("Booted", NULL);
+
+	// pin setup and initialization
+	for (int i = 0; i < 4; i++){
+		pinMode(zones[i], OUTPUT);
+		digitalWrite(zones[i], LOW);
+	}
+
+
+	publish_event("GardenPhoton Booted", NULL);
+
+	// Alarm.alarmRepeat(8,30,0, MorningAlarm);  // 8:30am every day
+	// Alarm.alarmRepeat(17,45,10,EveningAlarm);  // 5:45pm every day 
+	// Alarm.alarmRepeat(dowSaturday,8,30,30,WeeklyAlarm);  // 8:30:30 every Saturday 
+
+    Alarm.timerRepeat(TIMER, Repeats);     // timer for every 15 seconds    
+
+	Spark.function("test", API_test);
+}
+
+int API_test(String command) {
+	toggle_zone_state(ZONE0);
+	publish_event("api", NULL);
+}
+
+void Repeats(){
+  toggle_zone_state(ZONE0);
+  publish_event(String(TIMER + " second timer"),NULL);
+}
+
+bool toggle_zone_state(byte zone) {
+	if(zone_state_array[zone]) {
+		digitalWrite(zone, LOW);
+		zone_state_array[zone] = 0;
+	} else {
+		digitalWrite(zone, HIGH);
+		zone_state_array[zone] = 1;
+	}
+
+	publish_event("Zone Change", String(zone + ":" + zone_state_array[zone]));
+	return zone_state_array[zone];
 }
 
 
 // ************************* MAIN LOOP *************************
 void loop() {
+	Alarm.delay(0); // required for all alarms (the point where it can check)
 	if (check_sync_timer()) { 
 		sync_time_with_cloud();
 	}
+
+
 }
 
 
@@ -29,9 +82,11 @@ void loop() {
 // 	return true; // or something
 // }
 
-// void set_rain_delay(int delay_time){
-// 	// set rain delay for delay_time number of hours
-// }
+void set_rain_delay(int delay_time){
+	// set rain delay for delay_time number of hours
+
+	publish_event("Rain Delay", String(delay_time));
+}
 
 
 // ************************* ZONE FUNCTIONS *************************
@@ -45,12 +100,23 @@ void run_zone_for_duration(char zone_number, int duration){
 
 bool change_zone_valve(char zone_number, bool on_or_off){
 	// turn the specified zone on or off
+	String status;
+
+	if (on_or_off){
+		status = "on";
+	} else {
+		status = "off";
+	}
+
+	publish_event("Zone Change", String(zone_number + ":" + status));
 
 	return on_or_off;
 }
 
 void zones_all_off(){
 	// turn all zones off
+
+	publish_event("Zones All Off", NULL);
 }
 
 
@@ -90,9 +156,10 @@ bool check_sync_timer(){
 
 void sync_time_with_cloud(){
 	// update current time on microprocessor
-	Spark.syncTime();
+// 	Spark.syncTime();
 	last_cloud_time_sync = millis();
-	publish_event("time synced", NULL);
+
+	publish_event("Time synced", NULL);
 }
 
 
