@@ -7,12 +7,12 @@
 #define ZONE1 1
 #define ZONE2 2
 #define ZONE3 3
-#define TIMER 20	// seconds for "relay test heartbeat timer"
 
 // ************************* VARIABLES *************************
 unsigned long last_cloud_time_sync = millis();
 byte zone_state_array[4] = {0,0,0,0};
 byte zones[4] = {ZONE0, ZONE1, ZONE2, ZONE3};
+byte test_timer = 20;	// seconds for "relay test heartbeat timer"
 
 int API_test(String command);
 
@@ -34,7 +34,7 @@ void setup() {
 	// Alarm.alarmRepeat(17,45,10,EveningAlarm);  // 5:45pm every day 
 	// Alarm.alarmRepeat(dowSaturday,8,30,30,WeeklyAlarm);  // 8:30:30 every Saturday 
 
-    Alarm.timerRepeat(TIMER, Repeats);     // timer for every 15 seconds    
+    Alarm.timerRepeat(test_timer, Repeats);     // timer for every 15 seconds    
 
 	Spark.function("test", API_test);
 }
@@ -46,7 +46,7 @@ int API_test(String command) {
 
 void Repeats(){
   toggle_zone_state(ZONE0);
-  publish_event(String(TIMER + " second timer"),NULL);
+  publish_event("test-timer", String(test_timer));
 }
 
 bool toggle_zone_state(byte zone) {
@@ -58,7 +58,7 @@ bool toggle_zone_state(byte zone) {
 		zone_state_array[zone] = 1;
 	}
 
-	publish_event("Zone Change", String(zone + ":" + zone_state_array[zone]));
+	publish_event("Zone Change", "{" + String(zone) + ":" + String(zone_state_array[zone]) + "}");// + ":" + String(zone_state_array[zone])));
 	return zone_state_array[zone];
 }
 
